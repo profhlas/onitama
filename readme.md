@@ -11,4 +11,4 @@ Resources
 - [Arcane Wonders official](https://www.arcanewonders.com/product/onitama/)
 - [Wikipedia](https://en.wikipedia.org/wiki/Onitama)
 - [BoardgameGeek](https://boardgamegeek.com/boardgame/160477/onitama)
-- [AI strategies](https://github.com/TrippW/onitama)
+- [AI strategies](https://github.com/arijitnoobstar/OnitamaAI)
