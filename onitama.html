@@ -1,0 +1,601 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=0.75">
+<title>Onitama</title>
+<style>
+    body { margin-left: auto; margin-right: auto; width: 30em; }
+
+    .possible { background-color: lightgrey; }
+    .selected { background-color: lightgreen; }
+
+    table { border-collapse: collapse; }
+
+    #board { cursor: pointer; }
+    #board td { border:1px solid gray; font-size: 4em; height: 1.35em; width: 1.35em; text-align:center; vertical-align:middle; }
+    #board td#c1 { border: 2px solid blue; }
+    #board td#c5 { border: 2px solid red; }
+    #board .blue { color: blue; }
+    #board .red  { color: red; }
+
+    div.card { float: left; padding-right: 2em; }
+
+    table.grid td { border: 1px solid grey; font-size: 1em; height: 1em; width: 1em;}
+    table.grid td.center { background-color: black; }
+
+    textarea { height: 6em; width: 18em; }
+    hr.break { clear:both; visibility: hidden; }
+
+    #opponentCards div.card {
+        -ms-transform: rotate(180deg); /* IE 9 */
+        -webkit-transform: rotate(180deg); /* Chrome, Safari, Opera */
+        transform: rotate(180deg);
+    }
+</style>
+</head>
+<body>
+<h1>Onitama</h1>
+<p>by <a title="Shimpei Sato" href="https://boardgamegeek.com/boardgamedesigner/69723/shimpei-sato" target="_blank">Shimpei Sato</a></p>
+<p>Capture opponent's king or reach opponent's base with your king.</p>
+
+<div style="margin-left: auto; margin-right: auto; width: 20em;">
+    <p hidden>Opponent cards:</p>
+    <div id="opponentCards"></div>
+</div>
+<hr class="break" />
+
+<table id="board">
+    <tr>
+        <td id="a5"><span class='red pawn'>&#9823;</span></td>
+        <td id="b5"><span class='red pawn'>&#9823;</span></td>
+        <td id="c5"><span class='red king'>&#9818;</span></td>
+        <td id="d5"><span class='red pawn'>&#9823;</span></td>
+        <td id="e5"><span class='red pawn'>&#9823;</span></td>
+    </tr>
+    <tr>
+        <td id="a4"></td>
+        <td id="b4"></td>
+        <td id="c4"></td>
+        <td id="d4"></td>
+        <td id="e4"></td>
+    </tr>
+    <tr>
+        <td id="a3"></td>
+        <td id="b3"></td>
+        <td id="c3"></td>
+        <td id="d3"></td>
+        <td id="e3"></td>
+    </tr>
+    <tr>
+        <td id="a2"></td>
+        <td id="b2"></td>
+        <td id="c2"></td>
+        <td id="d2"></td>
+        <td id="e2"></td>
+    </tr>
+    <tr>
+        <td id="a1"><span class='blue pawn'>&#9823;</span></td>
+        <td id="b1"><span class='blue pawn'>&#9823;</span></td>
+        <td id="c1"><span class='blue king'>&#9818;</span></td>
+        <td id="d1"><span class='blue pawn'>&#9823;</span></td>
+        <td id="e1"><span class='blue pawn'>&#9823;</span></td>
+    </tr>
+</table>
+<div style="float: left;">
+    <p>Player cards:</p>
+    <div id="playerCards"></div>
+</div>
+<div style="float: right">
+    <p>Next card:</p>
+    <div id="nextCard"></div>
+</div>
+<hr class="break" />
+
+<p><textarea id="log" placeholder="Log" readonly></textarea></p>
+<script>
+"use strict";
+var UTILS = UTILS || {};
+
+UTILS.capFirstLetter = function (txt) {
+	return txt.charAt(0).toUpperCase() + txt.slice(1);
+};
+
+
+var GAME = GAME || {};
+
+// [row change, col change] from player's point of view
+GAME.cards = {
+    // template: [[, ], [, ], [, ]],
+	ant: [[-1, 1], [1, 1], [0, -1], [0, -2]],
+	antelope: [[-2, 0], [-1, -1], [1, 1]],
+    bear: [[-1, 1], [0, 1], [1, -1]],
+	boar: [[-1, 0], [0, 1], [1, 0]],
+    cat: [[-1, 0], [0, 1], [0, -2], [2, 0]],
+    centipede: [[-1, 0], [0, 1], [2, -2]],
+	cobra: [[-1, 0], [1, 1], [1, -1]],
+    crab: [[-2, 0], [0, 1], [2, 0]],
+    crane: [[0, 1], [-1, -1], [1, -1]],
+    dog: [[-1, 1], [-1, 0], [-1, -1]],
+    dragon: [[-2, 1], [2, 1], [-1, -1], [1, -1]],
+    elephant: [[-1, 1], [-1, 0], [1, 1], [1, 0]],
+    eel: [[-1, 1], [1, 0], [-1, -1]],
+    fox: [[1, 1], [1, 0], [1, -1]],
+    frog: [[-2, 0], [-1, 1], [1, -1]],
+    giraffe: [[-2, 1], [0, -1], [2, 1]],
+    goat: [[-1, 0], [0, -1], [1, 1]],
+    goose: [[-1, 1], [-1, 0], [1, 0], [1, -1]],
+    hornet: [[-2, -2], [0, 1], [1, 0]],
+    horse: [[0, 1], [-1, 0], [0, -1]],
+    iguana: [[-2, 1], [0, 1], [1, -1]],
+    kirin: [[-1, 2], [1, 2], [0, -2]],
+    lobster: [[-1, -2], [-1,1], [1, -2], [1, 1]],
+    mantis: [[-1, 1], [1, 1], [0, -1]],
+    monkey: [[1, -1], [1, 1], [-1, 1], [-1, -1]],
+    mouse: [[-1, -1], [0, 1], [1, 0]],
+    nessie: [[-2, 1], [-1, -1], [1, -1], [2, 0]],
+    otter: [[-1, 1], [1, -1], [2, 0]],
+    ox: [[0, 1], [1, 0], [0, -1]],
+    panda: [[-1, -1], [0, 1], [1, 1]],
+    phoenix: [[-2, 0], [-1, 1], [1, 1], [2, 0]],
+    rabbit: [[-1, -1], [1, 1], [2, 0]],
+	racoon: [[-1, -1], [0, 1], [2, 1]],
+    rat: [[-1, 0], [0, 1], [1, -1]],
+    rooster: [[-1, -1], [-1, 0], [1, 0], [1, 1]],
+    sable: [[-2, 0], [-1, -1], [1, 1]],
+    "sea snake": [[-1, -1], [0, 1], [2, 0]],
+    serow: [[-2, 0], [0, 1], [0, -2], [1, 0]],
+    sheep: [[-1, 1], [0, -1], [1, 0]],
+    steer: [[-1, -1], [-1, 0], [1, -1], [1, 0]],
+    tanuki: [[-1, -1], [0, 1], [2, 1]],
+    tiger: [[0, 2], [0, -1]],
+    turtle: [[-2, 0], [-1, -1], [1, -1], [2, 0]],
+    viper: [[-2, 0], [0, 1], [1, -1]],
+};
+
+GAME.cardNames = Object.keys(GAME.cards);
+
+GAME.currentPlayer = "blue";
+GAME.round = 1.0;
+GAME.log = "Onitama, by Shimpei Sato \r\n";
+
+Math.randomBetween = function (min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+// randomize the order of an array
+GAME.shuffle = function (array) {
+    "use strict";
+    var rand = 0;
+    var i = 0;
+
+    // https://blog.codinghorror.com/the-danger-of-naivete/
+    for (i = array.length - 1; i > 0; i--) {
+        rand = Math.randomBetween(0, i);
+        [array[i], array[rand]] = 
+            [array[rand], array[i]];
+    }
+
+    return array;
+};
+
+GAME.getSelectedCard = function () {
+    var inputs = document.getElementById("playerCards").querySelectorAll("input");
+    var selected = "";
+    var i = 0;
+
+	for (i = 0; i < inputs.length; i += 1) {
+		if (inputs[i].checked) {
+			selected = inputs[i].value;
+			break;
+		}
+    }
+
+    return selected;
+};
+
+
+GAME.clearCells = function (txt) {
+	var possibleCells = document.getElementById("board").getElementsByClassName(txt);
+
+    while(possibleCells.length > 0) {
+		possibleCells[0].classList.remove(txt);
+	}
+};
+
+// returns array of td elements
+GAME.possibleMoves = function (cell, cardName, currentPlayer) {
+    var letter2num = { a: 1, b: 2, c: 3, d: 4, e: 5};
+    var num2letter = ["", "a", "b", "c", "d", "e"]; // first is blank for indexing reasons
+    var col = letter2num[cell.id.charAt(0)];
+	var row = parseInt(cell.id.charAt(1), 10);
+	var cardFlipper = 1;
+	var newRow = 0;
+	var newCol = 0;
+	var moves = [];
+	var i = 0;
+
+	cardName = cardName || GAME.getSelectedCard();
+	currentPlayer = currentPlayer || GAME.currentPlayer;
+
+	if (cell.innerHTML === "") {
+		return moves;
+	}
+
+	// is selected spot for current player?
+	if (!cell.children[0].classList.contains(currentPlayer)) {
+		return moves;
+	}
+
+	if (cardName === "") {
+	    return moves;
+	}
+
+	if (GAME.currentPlayer === "red") {
+	    cardFlipper = -1;
+	}
+
+	for (i = 0; i < GAME.cards[cardName].length; i += 1) {
+		newCol = col + GAME.cards[cardName][i][0]*cardFlipper;
+		newRow = row + GAME.cards[cardName][i][1]*cardFlipper;
+
+		// only add spots if still on board
+		if (1 <= newCol && newCol <= 5  &&
+		    1 <= newRow && newRow <= 5) {
+			moves.push(document.getElementById(num2letter[newCol] + newRow));
+		}
+	}
+
+	// remove spots that overlap with own player spots
+	for (i = 0; i < moves.length; i += 1) {
+		if (moves[i].children[0] &&
+		    moves[i].children[0].classList.contains(currentPlayer)) {
+			moves.splice(i, 1);
+	        i -= 1;
+		}
+	}
+
+	return moves;
+};
+
+GAME.cardChange = function () {
+	var selectedCells = document.getElementById("board").querySelectorAll(".selected");
+
+	var i = 0;
+
+	if (selectedCells.length === 0) {
+		return;
+	}
+
+	GAME.clearCells("possible");
+
+	GAME.moveHighlighter(selectedCells[0]);
+};
+
+GAME.showCards = function () {
+    var inputs = document.getElementsByName("inputs");
+	var i = 0;
+
+	var makeCard = function (num, playable) {
+		var name = GAME.cardNames[num];
+		var txt = "<div class='card'>";
+		var row = 0;
+		var col = 0;
+		var i = 0;
+
+		var matchFound = false;
+
+        if (playable) {
+            txt += "<label><input type='radio' name='cards' onchange='GAME.cardChange()' value='" + name + "'";
+
+			if (num === 0) {
+				txt += " checked";
+			}
+			txt += "\/>";
+        }
+        txt += name + "<br>";
+        txt += "<table class='grid'>";
+		for (row = 2; row >= -2; row -= 1) {
+			txt += "<tr>";
+			for (col = -2; col <= 2; col += 1) {
+				if (row === 0 && col === 0) {
+					txt += "<td class='center'><\/td>";
+				} else {
+					matchFound = false;
+
+					for (i = 0; i < GAME.cards[name].length; i += 1) {
+						if (GAME.cards[name][i][0] === col && GAME.cards[name][i][1] === row) {
+							matchFound = true;
+						}
+					}
+
+					if (matchFound) {
+						txt += "<td class='possible'><\/td>";
+					} else {
+						txt += "<td><\/td>";
+					}
+				}
+			}
+			txt += "<\/tr>";
+		}
+
+		if (playable) {
+			txt += "<\/label>";
+		}
+        txt += "<\/div>";
+
+        return txt;
+    };
+
+    document.getElementById("playerCards").innerHTML    = makeCard(0, true);
+	document.getElementById("playerCards").innerHTML   += makeCard(1, true);
+    document.getElementById("nextCard").innerHTML       = makeCard(2);
+    document.getElementById("opponentCards").innerHTML  = makeCard(3);
+	document.getElementById("opponentCards").innerHTML += makeCard(4);
+};
+
+GAME.endGame = function (txt) {
+    var boardCells = document.getElementById("board").querySelectorAll("td");
+    var i = 0;
+
+    setTimeout(function () {
+        alert(txt);
+    }, 500);
+
+    // remove event listeners
+    for (i = 0; i < boardCells.length; i += 1) {
+		if (document.documentElement.hasOwnProperty("ontouchstart")) {
+			boardCells[i].removeEventListener("touchend", GAME.selectOrMove, false);
+		} else {
+			boardCells[i].removeEventListener("click", GAME.selectOrMove, false);
+    	}
+    }
+};
+
+GAME.checkEndGame = function (cardTxt, startTxt, finalTxt) {
+    var logUI = document.getElementById("log");
+    var kings = document.querySelectorAll(".king");
+	var txt = parseFloat(GAME.round).toFixed(1) + " " + UTILS.capFirstLetter(GAME.currentPlayer) + " " + cardTxt + ", " + startTxt;;
+	var tmpPiece;
+
+	if (finalTxt) {
+		txt += "&rarr;" + finalTxt;
+	}
+
+	// update log
+	GAME.log = GAME.log + "\r\n" + txt;
+	logUI.innerHTML = GAME.log;
+    logUI.scrollTop = logUI.scrollHeight;
+
+	GAME.round += 0.5;
+
+	GAME.clearCells("possible");
+	GAME.clearCells("selected");
+
+    if (kings.length < 2) {
+        GAME.endGame(GAME.currentPlayer + " has captured the king and is the winner!");
+        return;
+    }
+
+    // has base has been captured by king?
+	tmpPiece = document.getElementById("c5").childNodes[0];
+    if (tmpPiece && tmpPiece.classList.contains("blue") && tmpPiece.classList.contains("king")) {
+        GAME.endGame("Blue has captured the base and is the winner!");
+        return;
+    }
+
+    tmpPiece = document.getElementById("c1").childNodes[0];
+    if (tmpPiece && tmpPiece.classList.contains("red") && tmpPiece.classList.contains("king")) {
+        GAME.endGame("Red has captured the base and is the winner!");
+        return;
+    }
+
+    // game continues...
+
+	// switch cards
+	GAME.cardNames[GAME.cardNames.indexOf(cardTxt)] = GAME.cardNames[2]; // 2 is location of next card
+	GAME.cardNames[2] = cardTxt;
+	GAME.showCards();
+
+	// switch players
+    if (GAME.currentPlayer === "red") {
+        GAME.currentPlayer = "blue";
+    } else {
+        GAME.currentPlayer = "red";
+        GAME.ai();
+    }
+};
+
+GAME.aiSimulation = function () {
+	var boardCells = document.getElementById("board").querySelectorAll("td");
+	var boardSim = [[], [], [], [], []];
+	var pieceValue = 0;
+	var currentPlayer = ["red", "blue"];
+	var trials = 100;
+	var tmpTrials = 0;
+	var i = 0;
+
+	// create simulation board
+	for (i = 0; i < boardCells.length; i += 1) {
+	    if (boardCells[i].innerHTML === "") {
+			pieceValue = 0;
+		} else if (boardCells[i].childNodes[0].classList.contains("blue")) {
+			pieceValue = -1;
+		} else {
+			pieceValue = 1;
+		}
+
+		if (boardCells[i].childNodes[0] && boardCells[i].childNodes[0].classList.contains("king")) {
+			pieceValue = 10*pieceValue;
+		}
+
+		boardSim[Math.floor(i / 5)][i % 5] = pieceValue;
+	}
+
+	return 0;
+};
+
+GAME.ai = function () {
+    var pieces = document.querySelectorAll(".red"); // need to get parent for each
+    var piecesFinal = [];
+    var moves3 = []; // based on 3rd position of cards
+    var moves4 = []; // based on 4th position of cards
+	var targetId = "";
+	var cardUsed = "";
+    var rand = 0;
+	var i = 0;
+
+    // get parents
+    for (i = 0; i < pieces.length; i += 1) {
+       piecesFinal.push(pieces[i].parentNode);
+    }
+
+	// get possible moves
+    for (i = 0; i < piecesFinal.length; i += 1) {
+        moves3[i] = GAME.possibleMoves(piecesFinal[i], GAME.cardNames[3]);
+        moves4[i] = GAME.possibleMoves(piecesFinal[i], GAME.cardNames[4]);
+    }
+
+    // remove pieces without moves
+    for (i = 0; i < piecesFinal.length; i += 1) {
+        if (moves3[i].length === 0 && moves4[i].length === 0) {
+            piecesFinal.splice(i, 1);
+            moves3.splice(i, 1);
+            moves4.splice(i, 1);
+            i -= 1;
+        }
+    }
+
+	// no moves available, randomly pick card to switch out
+    if (piecesFinal.length === 0) {
+		cardUsed = GAME.cardNames[Math.randomBetween(3, 4)];
+
+		GAME.checkEndGame(cardUsed, "Pass");
+        return;
+    }
+
+    // "i" will now be index of piece to move
+    i = Math.randomBetween(0, piecesFinal.length - 1);
+    rand = Math.randomBetween(0, moves3[i].length + moves4[i].length - 1);
+
+    if (rand < moves3[i].length) {
+        moves3[i][rand].innerHTML = piecesFinal[i].innerHTML;
+		targetId = moves3[i][rand].id;
+		cardUsed = GAME.cardNames[3];
+    } else {
+        rand = rand - moves3[i].length;
+        moves4[i][rand].innerHTML = piecesFinal[i].innerHTML;
+		targetId = moves4[i][rand].id;
+		cardUsed = GAME.cardNames[4];
+    }
+
+    piecesFinal[i].innerHTML = "";
+
+    GAME.checkEndGame(cardUsed, piecesFinal[i].id, targetId);
+};
+
+GAME.moveHighlighter = function () {
+	var selected = document.getElementById("board").querySelectorAll(".selected");
+	var moves = [];
+	var i = 0;
+
+	if (GAME.currentPlayer === "blue") {
+		moves = GAME.possibleMoves(selected[0]);
+
+		if (moves.length === 0) {
+			return;
+		}
+
+		// display possible moves
+		for (i = 0; i < moves.length; i += 1) {
+			moves[i].classList.add("possible");
+		}
+	}
+};
+
+// "this" is td element
+GAME.selectOrMove = function () {
+	var selectedCell = document.getElementById("board").querySelectorAll(".selected");
+	var currentPlayerInCell = false;
+
+	if (this.childNodes[0] && this.childNodes[0].classList.contains(GAME.currentPlayer)) {
+		currentPlayerInCell = true;
+	}
+
+	// clear selected if current cell
+	if (this.classList.contains("selected")) {
+		GAME.clearCells("possible");
+		GAME.clearCells("selected");
+		return;
+	}
+
+	// player piece selected
+	if (selectedCell.length >= 0 && currentPlayerInCell) {
+		GAME.clearCells("possible");
+		GAME.clearCells("selected");
+
+		this.classList.add("selected");
+		GAME.moveHighlighter();
+		return;
+	};
+
+	// move piece from selected to possible
+	if (this.classList.contains("possible")) {
+		this.innerHTML = selectedCell[0].innerHTML;
+		selectedCell[0].innerHTML = "";
+
+		GAME.checkEndGame(GAME.getSelectedCard(), selectedCell[0].id, this.id);
+		return;
+	}
+};
+
+GAME.selectCard = function () {
+    var playerCards = document.getElementById("playerHand").querySelectorAll(".card");
+    var i = 0;
+
+    if (this.classList.contains("selected")) {
+        this.classList.remove("selected");
+    } else {
+        for (i = 0; i < playerCards.length; i += 1) {
+            playerCards[i].classList.remove("selected");
+        }
+        this.classList.add("selected");
+    }
+};
+
+// setup function
+(function () {
+    var order = ["blue", "red"];
+    var boardCells = document.getElementById("board").querySelectorAll("td");
+    var i = 0;
+
+    // select five cards for play
+    // first two are for player/blue, third card is "next", last two are for opponent/red
+    GAME.shuffle(GAME.cardNames);
+    while (GAME.cardNames.length > 5){
+        GAME.cardNames.pop();
+    }
+
+    GAME.showCards();
+
+    // add event listener to cells
+    for (i = 0; i < boardCells.length; i += 1) {
+		if (document.documentElement.hasOwnProperty("ontouchstart")) {
+			boardCells[i].addEventListener("touchend", GAME.selectOrMove, false);
+		} else {
+			boardCells[i].addEventListener("click", GAME.selectOrMove, false);
+    	}
+    }
+
+    GAME.currentPlayer = order[Math.randomBetween(0, 1)];
+
+
+    if (GAME.currentPlayer === "red") {
+        GAME.ai();
+    }
+
+
+}());
+</script>
+</body>
+</html>
