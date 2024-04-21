@@ -12,3 +12,4 @@ Resources
 - [Wikipedia](https://en.wikipedia.org/wiki/Onitama)
 - [BoardgameGeek](https://boardgamegeek.com/boardgame/160477/onitama)
 - [AI strategies](https://github.com/arijitnoobstar/OnitamaAI)
+- [clone](https://onitama.app/#/)
