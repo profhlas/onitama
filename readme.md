@@ -1,7 +1,7 @@
 # Onitama clone  
 by Shimpei Sato
 
-A two-player abstract game where a player wins by capturing the opponent’s main token (called a “master”) or by moving a token to the opponent’s middle space (called a “Temple”). Players can move their five tokens only using two patterns, with the used pattern becoming available to the opponent.
+A two-player abstract game where a player wins by capturing the opponent’s main token (called a “master”) or by moving the master to the opponent’s middle space (called a “Temple”). Players can move their five tokens only using two patterns, with the used pattern becoming available to the opponent.
 
 This version is designed to learn the game. It is solo only with an opponent that plays randomly.
 
